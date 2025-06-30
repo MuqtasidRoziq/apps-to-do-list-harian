@@ -5,15 +5,15 @@
 package ui;
 
 import ConnectorDb.mongoDb;
-import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import org.bson.Document;
 import javax.swing.*;
 import java.security.MessageDigest;
 import static com.mongodb.client.model.Filters.*;
-import java.util.Locale;
 import java.util.ResourceBundle;
+import generic.ResultLogin;
+import internationalization.configLanguage;
 
 /**
  *
@@ -22,13 +22,15 @@ import java.util.ResourceBundle;
 public class login extends javax.swing.JFrame {
 
     private final MongoCollection<Document> users;
-    private ResourceBundle bundle;
-    private Locale currentLocale;
+    private ResourceBundle bundle = configLanguage.getInstance().getBundle();
 
     public login() {
         initComponents();
         MongoDatabase db = mongoDb.getDatabase();
         users = db.getCollection("users");
+        txtUsername.requestFocus();
+        selectLanguage.setSelectedItem(configLanguage.getInstance().getLanguageName());
+        setLanguage(configLanguage.getInstance().getLanguageName());
     }
 
     private String hashSHA256(String input) {
@@ -45,10 +47,10 @@ public class login extends javax.swing.JFrame {
         }
     }
 
-    private boolean register(String username, String password, String fullname) {
+    private ResultLogin<Void> register(String username, String password, String fullname) {
         Document exist = users.find(eq("username", username)).first();
         if (exist != null) {
-            return false;
+            return new ResultLogin<>(false, null, bundle.getString("msg.username_taken"));
         }
 
         String hash = hashSHA256(password);
@@ -56,39 +58,38 @@ public class login extends javax.swing.JFrame {
                 .append("password", hash)
                 .append("fullname", fullname);
         users.insertOne(user);
-        return true;
+
+        return new ResultLogin<>(true, null, bundle.getString("msg.register_success"));
     }
 
-    private boolean loginUser(String username, String password) {
+    private ResultLogin<String> loginUser(String username, String password) {
         String hash = hashSHA256(password);
         Document user = users.find(and(eq("username", username), eq("password", hash))).first();
-        return user != null;
-    }
 
-    private String getFullName(String username) {
-        Document user = users.find(eq("username", username)).first();
-        return user != null ? user.getString("fullname") : null;
+        if (user != null) {
+            String fullname = user.getString("fullname");
+            return new ResultLogin<>(true, fullname, bundle.getString("msg.success") + fullname + "!");
+        } else {
+            Document userOnly = users.find(eq("username", username)).first();
+            if (userOnly == null) {
+                return new ResultLogin<>(false, null, bundle.getString("msg.user_not_found"));
+            } else {
+                return new ResultLogin<>(false, null, bundle.getString("msg.wrong_password"));
+            }
+        }
     }
 
     private void setLanguage(String language) {
-        switch (language) {
-            case "Indonesia":
-                currentLocale = new Locale("id", "ID");
-                break;
-            case "Inggris":
-                currentLocale = new Locale("en", "US");
-                break;
-            default:
-                currentLocale = Locale.getDefault();
-        }
-
-        bundle = ResourceBundle.getBundle("internationalization.message", currentLocale);
+        configLanguage.getInstance().setLanguage(language);
+        bundle = configLanguage.getInstance().getBundle();
 
         jLabel1.setText(bundle.getString("login.title"));
         lblCreateAccount.setText(bundle.getString("register.title"));
+        lblNama.setText(bundle.getString("label.fullname"));
         lblUsername.setText(bundle.getString("label.username"));
         lblUsernameregis.setText(bundle.getString("label.username"));
         lblPassword.setText(bundle.getString("label.password"));
+        lblConfirmPass.setText(bundle.getString("label.confirm_pass"));
         lblNama2.setText(bundle.getString("label.password"));
         btnLogin.setText(bundle.getString("button.login"));
         btnRegister.setText(bundle.getString("button.register"));
@@ -113,6 +114,8 @@ public class login extends javax.swing.JFrame {
         lblUsernameregis = new javax.swing.JLabel();
         lblNama2 = new javax.swing.JLabel();
         btnRegis = new javax.swing.JButton();
+        txtConfirmPass = new javax.swing.JTextField();
+        lblConfirmPass = new javax.swing.JLabel();
         jPanel3 = new javax.swing.JPanel();
         jPanel1 = new javax.swing.JPanel();
         jLabel1 = new javax.swing.JLabel();
@@ -138,10 +141,10 @@ public class login extends javax.swing.JFrame {
         jPanel6.setLayout(jPanel6Layout);
         jPanel6Layout.setHorizontalGroup(
             jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel6Layout.createSequentialGroup()
-                .addContainerGap(42, Short.MAX_VALUE)
-                .addComponent(lblCreateAccount)
-                .addGap(41, 41, 41))
+            .addGroup(jPanel6Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(lblCreateAccount, javax.swing.GroupLayout.DEFAULT_SIZE, 301, Short.MAX_VALUE)
+                .addContainerGap())
         );
         jPanel6Layout.setVerticalGroup(
             jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -178,6 +181,24 @@ public class login extends javax.swing.JFrame {
         lblNama.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
         lblNama.setText("full name");
 
+        txtNama.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                txtNamaActionPerformed(evt);
+            }
+        });
+
+        txtUsernameregis.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                txtUsernameregisActionPerformed(evt);
+            }
+        });
+
+        txtPass.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                txtPassActionPerformed(evt);
+            }
+        });
+
         lblUsernameregis.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
         lblUsernameregis.setText("username");
 
@@ -194,32 +215,35 @@ public class login extends javax.swing.JFrame {
             }
         });
 
+        txtConfirmPass.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                txtConfirmPassActionPerformed(evt);
+            }
+        });
+
+        lblConfirmPass.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
+        lblConfirmPass.setText("confirm password ");
+
         javax.swing.GroupLayout lblPassLayout = new javax.swing.GroupLayout(lblPass);
         lblPass.setLayout(lblPassLayout);
         lblPassLayout.setHorizontalGroup(
             lblPassLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(lblPassLayout.createSequentialGroup()
+                .addGap(108, 108, 108)
+                .addComponent(btnRegis)
+                .addGap(0, 0, Short.MAX_VALUE))
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, lblPassLayout.createSequentialGroup()
                 .addContainerGap(28, Short.MAX_VALUE)
-                .addGroup(lblPassLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(txtNama, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 259, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(txtUsernameregis, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 259, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(txtPass, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 259, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGroup(lblPassLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(lblConfirmPass, javax.swing.GroupLayout.PREFERRED_SIZE, 259, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(txtNama, javax.swing.GroupLayout.PREFERRED_SIZE, 259, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(txtUsernameregis, javax.swing.GroupLayout.PREFERRED_SIZE, 259, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(txtPass, javax.swing.GroupLayout.PREFERRED_SIZE, 259, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(txtConfirmPass, javax.swing.GroupLayout.PREFERRED_SIZE, 259, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(lblNama, javax.swing.GroupLayout.PREFERRED_SIZE, 259, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(lblUsernameregis, javax.swing.GroupLayout.PREFERRED_SIZE, 259, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(lblNama2, javax.swing.GroupLayout.PREFERRED_SIZE, 259, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addGap(26, 26, 26))
-            .addGroup(lblPassLayout.createSequentialGroup()
-                .addGroup(lblPassLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(lblPassLayout.createSequentialGroup()
-                        .addGap(118, 118, 118)
-                        .addComponent(lblUsernameregis))
-                    .addGroup(lblPassLayout.createSequentialGroup()
-                        .addGap(118, 118, 118)
-                        .addComponent(lblNama2))
-                    .addGroup(lblPassLayout.createSequentialGroup()
-                        .addGap(108, 108, 108)
-                        .addComponent(btnRegis))
-                    .addGroup(lblPassLayout.createSequentialGroup()
-                        .addGap(123, 123, 123)
-                        .addComponent(lblNama)))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         lblPassLayout.setVerticalGroup(
             lblPassLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -237,8 +261,12 @@ public class login extends javax.swing.JFrame {
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(txtPass, javax.swing.GroupLayout.PREFERRED_SIZE, 33, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(lblConfirmPass)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 8, Short.MAX_VALUE)
+                .addComponent(txtConfirmPass, javax.swing.GroupLayout.PREFERRED_SIZE, 33, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(btnRegis)
-                .addContainerGap(30, Short.MAX_VALUE))
+                .addGap(36, 36, 36))
         );
 
         javax.swing.GroupLayout jPanel5Layout = new javax.swing.GroupLayout(jPanel5);
@@ -358,7 +386,7 @@ public class login extends javax.swing.JFrame {
                 .addContainerGap(26, Short.MAX_VALUE))
         );
 
-        selectLanguage.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "-- pilih bahasa --", "Indonesia", "Inggris" }));
+        selectLanguage.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Inggris", "Indonesia" }));
         selectLanguage.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 selectLanguageActionPerformed(evt);
@@ -404,44 +432,30 @@ public class login extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void txtUsernameActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtUsernameActionPerformed
-        // TODO add your handling code here:
+        txtPassword.requestFocus();
     }//GEN-LAST:event_txtUsernameActionPerformed
 
     private void txtPasswordActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtPasswordActionPerformed
-        // TODO add your handling code here:
+        btnLogin.requestFocus();
     }//GEN-LAST:event_txtPasswordActionPerformed
 
     private void selectLanguageActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_selectLanguageActionPerformed
         String selected = (String) selectLanguage.getSelectedItem();
-        if (selected != null && !selected.equals("-- pilih bahasa --")) {
-            setLanguage(selected);
-        }
+        setLanguage(selected);
     }//GEN-LAST:event_selectLanguageActionPerformed
 
     private void btnLoginActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnLoginActionPerformed
         String username = txtUsername.getText();
         String password = txtPassword.getText();
+        ResultLogin<String> result = loginUser(username, password);
 
-        if (username.isEmpty() || password.isEmpty()) {
-            JOptionPane.showMessageDialog(this, bundle.getString("msg.required"));
-            return;
-        }
-
-        boolean success = loginUser(username, password);
-
-        if (success) {
-            String fullname = getFullName(username);
-            JOptionPane.showMessageDialog(this, bundle.getString("msg.success") + fullname + "!");
+        if (result.isSuccess()) {
+            JOptionPane.showMessageDialog(this, result.getMessage());
             MainUi main = new MainUi();
             main.setVisible(true);
-            this.dispose(); // tutup window login jika perlu
+            this.dispose();
         } else {
-            Document userOnly = users.find(eq("username", username)).first();
-            if (userOnly == null) {
-                JOptionPane.showMessageDialog(this, bundle.getString("msg.user_not_found"));
-            } else {
-                JOptionPane.showMessageDialog(this, bundle.getString("msg.wrong_password"));
-            }
+            JOptionPane.showMessageDialog(this, result.getMessage());
         }
     }//GEN-LAST:event_btnLoginActionPerformed
 
@@ -456,22 +470,45 @@ public class login extends javax.swing.JFrame {
         String nama = txtNama.getText();
         String user = txtUsernameregis.getText();
         String pass = txtPass.getText();
+        String conPass = txtConfirmPass.getText();
 
-        if (nama.isEmpty() || user.isEmpty() || pass.isEmpty()) {
+        if (nama.isEmpty() || user.isEmpty() || pass.isEmpty() || conPass.isEmpty()) {
             JOptionPane.showMessageDialog(this, bundle.getString("msg.all_fields_required"));
             return;
         }
 
-        if (register(user, pass, nama)) {
-            JOptionPane.showMessageDialog(this, bundle.getString("msg.register_success"));
+        if (conPass != pass) {
+
+        }
+
+        ResultLogin<Void> result = register(user, pass, nama);
+
+        if (result.isSuccess()) {
+            JOptionPane.showMessageDialog(this, result.getMessage());
             txtNama.setText("");
             txtUsernameregis.setText("");
             txtPass.setText("");
             formregister.setVisible(false);
         } else {
-            JOptionPane.showMessageDialog(this, bundle.getString("msg.username_taken"));
+            JOptionPane.showMessageDialog(this, result.getMessage());
         }
     }//GEN-LAST:event_btnRegisActionPerformed
+
+    private void txtNamaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtNamaActionPerformed
+        txtUsernameregis.requestFocus();
+    }//GEN-LAST:event_txtNamaActionPerformed
+
+    private void txtUsernameregisActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtUsernameregisActionPerformed
+        txtPass.requestFocus();
+    }//GEN-LAST:event_txtUsernameregisActionPerformed
+
+    private void txtPassActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtPassActionPerformed
+        btnRegis.requestFocus();
+    }//GEN-LAST:event_txtPassActionPerformed
+
+    private void txtConfirmPassActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtConfirmPassActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_txtConfirmPassActionPerformed
 
     /**
      * @param args the command line arguments
@@ -502,6 +539,7 @@ public class login extends javax.swing.JFrame {
 
         /* Create and display the form */
         java.awt.EventQueue.invokeLater(new Runnable() {
+            @Override
             public void run() {
                 new login().setVisible(true);
             }
@@ -521,6 +559,7 @@ public class login extends javax.swing.JFrame {
     private javax.swing.JPanel jPanel4;
     private javax.swing.JPanel jPanel5;
     private javax.swing.JPanel jPanel6;
+    private javax.swing.JLabel lblConfirmPass;
     private javax.swing.JLabel lblCreateAccount;
     private javax.swing.JLabel lblNama;
     private javax.swing.JLabel lblNama2;
@@ -529,6 +568,7 @@ public class login extends javax.swing.JFrame {
     private javax.swing.JLabel lblUsername;
     private javax.swing.JLabel lblUsernameregis;
     private javax.swing.JComboBox<String> selectLanguage;
+    private javax.swing.JTextField txtConfirmPass;
     private javax.swing.JTextField txtNama;
     private javax.swing.JTextField txtPass;
     private javax.swing.JTextField txtPassword;
