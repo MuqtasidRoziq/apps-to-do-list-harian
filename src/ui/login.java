@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
- */
 package ui;
 
 import ConnectorDb.mongoDb;
@@ -13,6 +9,7 @@ import java.security.MessageDigest;
 import static com.mongodb.client.model.Filters.*;
 import java.util.ResourceBundle;
 import generic.ResultLogin;
+import generic.loginSession;
 import internationalization.configLanguage;
 
 /**
@@ -63,19 +60,25 @@ public class login extends javax.swing.JFrame {
     }
 
     private ResultLogin<String> loginUser(String username, String password) {
-        String hash = hashSHA256(password);
-        Document user = users.find(and(eq("username", username), eq("password", hash))).first();
+        MongoDatabase db = mongoDb.getDatabase();
+        MongoCollection<Document> users = db.getCollection("users");
+
+        Document user = users.find(eq("username", username)).first();
 
         if (user != null) {
-            String fullname = user.getString("fullname");
-            return new ResultLogin<>(true, fullname, bundle.getString("msg.success") + fullname + "!");
-        } else {
-            Document userOnly = users.find(eq("username", username)).first();
-            if (userOnly == null) {
-                return new ResultLogin<>(false, null, bundle.getString("msg.user_not_found"));
+            String hashedPassword = hashSHA256(password); // pastikan pakai hash SHA-256
+            if (hashedPassword.equals(user.getString("password"))) {
+                String id = user.getObjectId("_id").toHexString();
+                String fullname = user.getString("fullname");
+
+                loginSession.setUser(id, fullname);
+
+                return new ResultLogin<>(true, id, bundle.getString("msg.success"));
             } else {
                 return new ResultLogin<>(false, null, bundle.getString("msg.wrong_password"));
             }
+        } else {
+            return new ResultLogin<>(false, null, bundle.getString("msg.user_not_found"));
         }
     }
 
@@ -386,7 +389,8 @@ public class login extends javax.swing.JFrame {
                 .addContainerGap(26, Short.MAX_VALUE))
         );
 
-        selectLanguage.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Inggris", "Indonesia" }));
+        selectLanguage.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 12)); // NOI18N
+        selectLanguage.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Indonesia", "Inggris", "Arab" }));
         selectLanguage.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 selectLanguageActionPerformed(evt);
@@ -451,12 +455,15 @@ public class login extends javax.swing.JFrame {
 
         if (result.isSuccess()) {
             JOptionPane.showMessageDialog(this, result.getMessage());
+
             MainUi main = new MainUi();
+            main.setLoggedInUserId(result.getData());
             main.setVisible(true);
             this.dispose();
         } else {
             JOptionPane.showMessageDialog(this, result.getMessage());
         }
+
     }//GEN-LAST:event_btnLoginActionPerformed
 
     private void btnRegisterActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRegisterActionPerformed
@@ -475,10 +482,6 @@ public class login extends javax.swing.JFrame {
         if (nama.isEmpty() || user.isEmpty() || pass.isEmpty() || conPass.isEmpty()) {
             JOptionPane.showMessageDialog(this, bundle.getString("msg.all_fields_required"));
             return;
-        }
-
-        if (conPass != pass) {
-
         }
 
         ResultLogin<Void> result = register(user, pass, nama);

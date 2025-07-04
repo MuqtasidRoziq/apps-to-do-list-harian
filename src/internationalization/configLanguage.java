@@ -14,7 +14,7 @@ public class configLanguage {
     private Locale currentLocale;
 
     private configLanguage() {
-        setLanguage("Inggris"); // default
+        setLanguage("Inggris");
     }
 
     public static configLanguage getInstance() {
@@ -30,8 +30,10 @@ public class configLanguage {
                 currentLocale = new Locale("id", "ID");
                 break;
             case "inggris":
-            case "english":
                 currentLocale = new Locale("en", "US");
+                break;
+            case "arab":
+                currentLocale = new Locale("ar", "SA"); 
                 break;
             default:
                 currentLocale = Locale.getDefault();

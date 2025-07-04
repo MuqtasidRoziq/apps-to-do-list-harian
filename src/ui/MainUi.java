@@ -1,23 +1,40 @@
 package ui;
 
+import generic.Aktivitas;
+import generic.AktivitasHalper;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import javax.swing.Timer;
 import internationalization.configLanguage;
+import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import javax.swing.JOptionPane;
+import javax.swing.table.DefaultTableModel;
+import serialization.serialization;
 
 public class MainUi extends javax.swing.JFrame {
 
     private ResourceBundle bundle = configLanguage.getInstance().getBundle();
+    private String loggedInUserId;
+    private AktivitasHalper<Aktivitas> aktivitasHelper;
 
     public MainUi() {
         initComponents();
         startClock();
         selectLanguage.setSelectedItem(configLanguage.getInstance().getLanguageName());
         updateLanguage();
+        setupTable();
     }
 
+    // set table
+    private void setupTable() {
+        DefaultTableModel model = new DefaultTableModel();
+        model.setColumnIdentifiers(new String[]{"No", "Nama Aktivitas", "Deskripsi", "Tanggal", "Waktu", "Status"});
+        tabActivity.setModel(model);
+    }
+
+    // set jam 
     private void startClock() {
         Timer timer = new Timer(1000, e -> {
             Date now = new Date();
@@ -35,6 +52,7 @@ public class MainUi extends javax.swing.JFrame {
         timer.start();
     }
 
+    // set bahasa
     private void updateLanguage() {
         bundle = configLanguage.getInstance().getBundle();
 
@@ -54,7 +72,7 @@ public class MainUi extends javax.swing.JFrame {
         lblTime.setText(bundle.getString("label.working_time"));
         int sl = selectStatus.getItemCount();
         selectStatus.removeAllItems();
-        for (int i = 0; i < sl; i++){
+        for (int i = 0; i < sl; i++) {
             selectStatus.addItem(bundle.getString("selectStatus." + i));
         }
         btnSave.setText(bundle.getString("button.save"));
@@ -65,12 +83,35 @@ public class MainUi extends javax.swing.JFrame {
         lblTime1.setText(bundle.getString("label.working_time"));
         int slcEdit = selectStatusEdit.getItemCount();
         selectStatusEdit.removeAllItems();
-        for(int j = 0; j < slcEdit; j++){
+        for (int j = 0; j < slcEdit; j++) {
             selectStatusEdit.addItem(bundle.getString("selectStatus." + j));
         }
         btnUpdate.setText(bundle.getString("button.update"));
         lblHistory.setText(bundle.getString("history.title"));
-        
+    }
+
+    private void loadAktivitasTable() {
+        DefaultTableModel model = (DefaultTableModel) tabActivity.getModel();
+        model.setRowCount(0); // clear tabel
+
+        List<Aktivitas> list = aktivitasHelper.getByUser(loggedInUserId);
+        int no = 1;
+        for (Aktivitas a : list) {
+            model.addRow(a.toRow(no++));
+        }
+    }
+
+    public void setLoggedInUserId(String userId) {
+        this.loggedInUserId = userId;
+
+        // Inisialisasi aktivitasHelper di sini
+        this.aktivitasHelper = new AktivitasHalper<>(
+                "aktivitas",
+                Aktivitas::fromDocument,
+                Aktivitas::toDocument
+        );
+
+        loadAktivitasTable(); // Muat data setelah inisialisasi
     }
 
     @SuppressWarnings("unchecked")
@@ -146,8 +187,8 @@ public class MainUi extends javax.swing.JFrame {
         jPanel8.setBackground(new java.awt.Color(0, 153, 255));
         jPanel8.setBorder(new javax.swing.border.SoftBevelBorder(javax.swing.border.BevelBorder.RAISED));
 
-        lblAddActivity.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 24)); // NOI18N
         lblAddActivity.setText("Add Activity");
+        lblAddActivity.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 24)); // NOI18N
 
         javax.swing.GroupLayout jPanel8Layout = new javax.swing.GroupLayout(jPanel8);
         jPanel8.setLayout(jPanel8Layout);
@@ -191,31 +232,36 @@ public class MainUi extends javax.swing.JFrame {
         jPanel9.setBackground(new java.awt.Color(0, 153, 255));
         jPanel9.setBorder(new javax.swing.border.SoftBevelBorder(javax.swing.border.BevelBorder.RAISED));
 
-        lblNameActivity.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
         lblNameActivity.setText("title activity");
+        lblNameActivity.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
 
         txtNameActivity.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
 
-        lblDescription.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
         lblDescription.setText("description");
+        lblDescription.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
 
         txtDescription.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
 
-        lblDateActivity.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
         lblDateActivity.setText("date activity");
+        lblDateActivity.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
 
-        lblTime.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
         lblTime.setText("working time");
+        lblTime.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
 
-        lblStatus.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
         lblStatus.setText("status");
+        lblStatus.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
 
-        selectStatus.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
         selectStatus.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "-- pilih status --", "not started", "in progress", "done" }));
+        selectStatus.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
 
+        btnSave.setText("save");
         btnSave.setBackground(new java.awt.Color(0, 51, 255));
         btnSave.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
-        btnSave.setText("save");
+        btnSave.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnSaveActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout jPanel9Layout = new javax.swing.GroupLayout(jPanel9);
         jPanel9.setLayout(jPanel9Layout);
@@ -340,32 +386,37 @@ public class MainUi extends javax.swing.JFrame {
         jPanel13.setBackground(new java.awt.Color(0, 153, 255));
         jPanel13.setBorder(new javax.swing.border.SoftBevelBorder(javax.swing.border.BevelBorder.RAISED));
 
-        lblNameActivity1.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
         lblNameActivity1.setText("title activity");
+        lblNameActivity1.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
 
         txtNameActivity1.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
 
-        lblDescription1.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
         lblDescription1.setText("description");
+        lblDescription1.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
 
         txtDescription1.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
 
-        lblDateActivity1.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
         lblDateActivity1.setText("date activity");
+        lblDateActivity1.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
 
-        lblTime1.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
         lblTime1.setText("working time");
+        lblTime1.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
 
-        lblStatus1.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
         lblStatus1.setText("status");
+        lblStatus1.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
 
         selectStatusEdit.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "-- pilih status --", "not started", "in progress", "done" }));
         selectStatusEdit.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
 
+        btnUpdate.setText("update");
         btnUpdate.setBackground(new java.awt.Color(0, 51, 255));
         btnUpdate.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
         btnUpdate.setForeground(new java.awt.Color(255, 255, 255));
-        btnUpdate.setText("update");
+        btnUpdate.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnUpdateActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout jPanel13Layout = new javax.swing.GroupLayout(jPanel13);
         jPanel13.setLayout(jPanel13Layout);
@@ -459,8 +510,8 @@ public class MainUi extends javax.swing.JFrame {
         jPanel15.setBackground(new java.awt.Color(0, 153, 255));
         jPanel15.setBorder(new javax.swing.border.SoftBevelBorder(javax.swing.border.BevelBorder.RAISED));
 
-        lblHistory.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 24)); // NOI18N
         lblHistory.setText("History Activity");
+        lblHistory.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 24)); // NOI18N
 
         jSeparator1.setBackground(new java.awt.Color(0, 0, 0));
         jSeparator1.setForeground(new java.awt.Color(255, 255, 255));
@@ -530,14 +581,14 @@ public class MainUi extends javax.swing.JFrame {
 
         jPanel3.setBackground(new java.awt.Color(0, 153, 255));
 
-        lblDailyActivityNotes.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 24)); // NOI18N
         lblDailyActivityNotes.setText(" Daily Activity Notes");
+        lblDailyActivityNotes.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 24)); // NOI18N
 
-        lblJam.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 18)); // NOI18N
         lblJam.setText("HH:MM:SS");
+        lblJam.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 18)); // NOI18N
 
-        jLabel1.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
         jLabel1.setText("EEEE, DD MMMM YY");
+        jLabel1.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
 
         javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
         jPanel3.setLayout(jPanel3Layout);
@@ -546,9 +597,9 @@ public class MainUi extends javax.swing.JFrame {
             .addGroup(jPanel3Layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel3Layout.createSequentialGroup()
-                        .addComponent(lblDailyActivityNotes, javax.swing.GroupLayout.PREFERRED_SIZE, 246, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 714, Short.MAX_VALUE)
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel3Layout.createSequentialGroup()
+                        .addComponent(lblDailyActivityNotes, javax.swing.GroupLayout.PREFERRED_SIZE, 425, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 567, Short.MAX_VALUE)
                         .addComponent(lblJam, javax.swing.GroupLayout.PREFERRED_SIZE, 105, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel3Layout.createSequentialGroup()
                         .addGap(0, 0, Short.MAX_VALUE)
@@ -605,8 +656,8 @@ public class MainUi extends javax.swing.JFrame {
         ));
         jScrollPane1.setViewportView(tabActivity);
 
-        lblListActivity.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 24)); // NOI18N
         lblListActivity.setText("Activity List");
+        lblListActivity.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 24)); // NOI18N
 
         javax.swing.GroupLayout jPanel4Layout = new javax.swing.GroupLayout(jPanel4);
         jPanel4.setLayout(jPanel4Layout);
@@ -616,7 +667,7 @@ public class MainUi extends javax.swing.JFrame {
                 .addContainerGap()
                 .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 898, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(lblListActivity))
+                    .addComponent(lblListActivity, javax.swing.GroupLayout.PREFERRED_SIZE, 254, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         jPanel4Layout.setVerticalGroup(
@@ -624,7 +675,7 @@ public class MainUi extends javax.swing.JFrame {
             .addGroup(jPanel4Layout.createSequentialGroup()
                 .addGap(30, 30, 30)
                 .addComponent(lblListActivity)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 18, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 397, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
         );
@@ -632,66 +683,71 @@ public class MainUi extends javax.swing.JFrame {
         jPanel5.setBackground(new java.awt.Color(0, 153, 255));
         jPanel5.setBorder(javax.swing.BorderFactory.createEtchedBorder());
 
+        btnAddActivity.setText("add activity");
         btnAddActivity.setBackground(new java.awt.Color(0, 51, 255));
         btnAddActivity.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
         btnAddActivity.setForeground(new java.awt.Color(255, 255, 255));
-        btnAddActivity.setText("add activity");
         btnAddActivity.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnAddActivityActionPerformed(evt);
             }
         });
 
+        btnEditActivity.setText("edit activity");
         btnEditActivity.setBackground(new java.awt.Color(0, 51, 255));
         btnEditActivity.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
         btnEditActivity.setForeground(new java.awt.Color(255, 255, 255));
-        btnEditActivity.setText("edit activity");
         btnEditActivity.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnEditActivityActionPerformed(evt);
             }
         });
 
+        btnDeleteActivity.setText("delete acivity");
         btnDeleteActivity.setBackground(new java.awt.Color(204, 0, 51));
         btnDeleteActivity.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
         btnDeleteActivity.setForeground(new java.awt.Color(255, 255, 255));
-        btnDeleteActivity.setText("delete acivity");
+        btnDeleteActivity.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnDeleteActivityActionPerformed(evt);
+            }
+        });
 
+        btnComplate.setText("complete");
         btnComplate.setBackground(new java.awt.Color(51, 204, 0));
         btnComplate.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
         btnComplate.setForeground(new java.awt.Color(255, 255, 255));
-        btnComplate.setText("complete");
 
+        btnCancel.setText("cancel");
         btnCancel.setBackground(new java.awt.Color(204, 0, 0));
         btnCancel.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
         btnCancel.setForeground(new java.awt.Color(255, 255, 255));
-        btnCancel.setText("cancel");
 
+        btnHistory.setText("history");
         btnHistory.setBackground(new java.awt.Color(0, 51, 255));
         btnHistory.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
         btnHistory.setForeground(new java.awt.Color(255, 255, 255));
-        btnHistory.setText("history");
         btnHistory.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnHistoryActionPerformed(evt);
             }
         });
 
-        lblMenu.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 24)); // NOI18N
         lblMenu.setText("Menu");
+        lblMenu.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 24)); // NOI18N
 
+        btnLOgout.setText("logout");
         btnLOgout.setBackground(new java.awt.Color(0, 51, 255));
         btnLOgout.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 12)); // NOI18N
         btnLOgout.setForeground(new java.awt.Color(255, 255, 255));
-        btnLOgout.setText("logout");
         btnLOgout.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnLOgoutActionPerformed(evt);
             }
         });
 
+        selectLanguage.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Indonesia", "Inggris", "Arab" }));
         selectLanguage.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
-        selectLanguage.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Indonesia", "Inggris" }));
         selectLanguage.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 selectLanguageActionPerformed(evt);
@@ -708,7 +764,7 @@ public class MainUi extends javax.swing.JFrame {
                 .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(btnAddActivity, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(btnEditActivity, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(btnDeleteActivity, javax.swing.GroupLayout.DEFAULT_SIZE, 141, Short.MAX_VALUE)
+                    .addComponent(btnDeleteActivity, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(btnComplate, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(btnCancel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(btnHistory, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
@@ -770,10 +826,8 @@ public class MainUi extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnEditActivityActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnEditActivityActionPerformed
-        formEditActivity.pack();
-        formEditActivity.setLocationRelativeTo(this);
-        formEditActivity.setModal(true);
-        formEditActivity.setVisible(true);
+
+
     }//GEN-LAST:event_btnEditActivityActionPerformed
 
     private void btnHistoryActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnHistoryActionPerformed
@@ -801,6 +855,40 @@ public class MainUi extends javax.swing.JFrame {
         configLanguage.getInstance().setLanguage(selected);
         updateLanguage();
     }//GEN-LAST:event_selectLanguageActionPerformed
+
+    private void btnSaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSaveActionPerformed
+        String nama = txtNameActivity.getText();
+        String desk = txtDescription.getText();
+        Date tanggal = jDateChooser1.getDate();
+        String waktu = txtWorkingTime.getText();
+        String status = (String) selectStatus.getSelectedItem();
+
+        if (nama.isEmpty() || desk.isEmpty() || tanggal == null || waktu.isEmpty()) {
+            JOptionPane.showMessageDialog(this, bundle.getString("msg.all_fields_required"));
+            return;
+        }
+
+        Aktivitas aktivitas = new Aktivitas(nama, desk, tanggal, waktu, status);
+
+        try {
+            aktivitasHelper.insert(aktivitas);
+            serialization.serializeToFile(aktivitas, "backup_" + aktivitas.getNama() + ".ser");
+            JOptionPane.showMessageDialog(this, bundle.getString("msg.add_success"));
+            loadAktivitasTable();
+            formAddActivity.setVisible(false);
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, bundle.getString("msg.add_failed") + e.getMessage());
+            e.printStackTrace();
+        }
+    }//GEN-LAST:event_btnSaveActionPerformed
+
+    private void btnUpdateActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnUpdateActionPerformed
+
+    }//GEN-LAST:event_btnUpdateActionPerformed
+
+    private void btnDeleteActivityActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnDeleteActivityActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_btnDeleteActivityActionPerformed
 
     /**
      * @param args the command line arguments
@@ -831,6 +919,7 @@ public class MainUi extends javax.swing.JFrame {
 
         /* Create and display the form */
         java.awt.EventQueue.invokeLater(new Runnable() {
+            @Override
             public void run() {
                 new MainUi().setVisible(true);
             }
