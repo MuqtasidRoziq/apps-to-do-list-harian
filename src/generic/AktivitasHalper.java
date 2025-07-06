@@ -8,6 +8,7 @@ import static com.mongodb.client.model.Filters.eq;
 import ConnectorDb.mongoDb;
 
 public class AktivitasHalper<T> {
+
     private final MongoCollection<Document> collection;
     private final Function<Document, T> fromDoc;
     private final Function<T, Document> toDoc;
@@ -32,8 +33,14 @@ public class AktivitasHalper<T> {
     }
 
     // Tambahkan method untuk update dan delete jika diperlukan
-    public void update(String id, T data) {
-        collection.replaceOne(eq("_id", new org.bson.types.ObjectId(id)), toDoc.apply(data));
+    public boolean update(String id, T data) {
+        try {
+            collection.replaceOne(eq("_id", new org.bson.types.ObjectId(id)), toDoc.apply(data));
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     public void delete(String id) {

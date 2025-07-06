@@ -18,6 +18,7 @@ public class MainUi extends javax.swing.JFrame {
     private ResourceBundle bundle = configLanguage.getInstance().getBundle();
     private String loggedInUserId;
     private AktivitasHalper<Aktivitas> aktivitasHelper;
+    private String currentEditingId;
 
     public MainUi() {
         initComponents();
@@ -30,7 +31,14 @@ public class MainUi extends javax.swing.JFrame {
     // set table
     private void setupTable() {
         DefaultTableModel model = new DefaultTableModel();
-        model.setColumnIdentifiers(new String[]{"No", "Nama Aktivitas", "Deskripsi", "Tanggal", "Waktu", "Status"});
+        model.setColumnIdentifiers(new String[]{
+            bundle.getString("tableActivity.0"),
+            bundle.getString("tableActivity.1"),
+            bundle.getString("tableActivity.2"),
+            bundle.getString("tableActivity.3"),
+            bundle.getString("tableActivity.4"),
+            bundle.getString("tableActivity.5")
+        });
         tabActivity.setModel(model);
     }
 
@@ -92,12 +100,19 @@ public class MainUi extends javax.swing.JFrame {
 
     private void loadAktivitasTable() {
         DefaultTableModel model = (DefaultTableModel) tabActivity.getModel();
-        model.setRowCount(0); // clear tabel
+        model.setRowCount(0);
 
         List<Aktivitas> list = aktivitasHelper.getByUser(loggedInUserId);
         int no = 1;
         for (Aktivitas a : list) {
-            model.addRow(a.toRow(no++));
+            model.addRow(new Object[]{
+                no++,
+                a.getNama(),
+                a.getDeskripsi(),
+                a.getTanggal(),
+                a.getWaktu(),
+                a.getStatus()
+            });
         }
     }
 
@@ -722,6 +737,11 @@ public class MainUi extends javax.swing.JFrame {
         btnCancel.setBackground(new java.awt.Color(204, 0, 0));
         btnCancel.setFont(new java.awt.Font("Arial Rounded MT Bold", 0, 14)); // NOI18N
         btnCancel.setForeground(new java.awt.Color(255, 255, 255));
+        btnCancel.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnCancelActionPerformed(evt);
+            }
+        });
 
         btnHistory.setText("history");
         btnHistory.setBackground(new java.awt.Color(0, 51, 255));
@@ -826,8 +846,33 @@ public class MainUi extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnEditActivityActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnEditActivityActionPerformed
+        int selectedRow = tabActivity.getSelectedRow();
+        if (selectedRow == -1) {
+            JOptionPane.showMessageDialog(this, bundle.getString("msg.selectRow"));
+            return;
+        }
 
+        // Dapatkan ID dari daftar aktivitas berdasarkan baris yang dipilih
+        List<Aktivitas> list = aktivitasHelper.getByUser(loggedInUserId);
+        if (selectedRow >= list.size()) {
+            JOptionPane.showMessageDialog(this, bundle.getString("msg.invalidSelection"));
+            return;
+        }
 
+        Aktivitas selectedAktivitas = list.get(selectedRow);
+        currentEditingId = selectedAktivitas.getId();
+
+        // Isi form edit dengan data yang dipilih
+        txtNameActivity1.setText(selectedAktivitas.getNama());
+        txtDescription1.setText(selectedAktivitas.getDeskripsi());
+        jDateChooser2.setDate(selectedAktivitas.getTanggal());
+        txtWorkingTime1.setText(selectedAktivitas.getWaktu());
+        selectStatusEdit.setSelectedItem(selectedAktivitas.getStatus());
+
+        formEditActivity.pack();
+        formEditActivity.setLocationRelativeTo(this);
+        formEditActivity.setModal(true);
+        formEditActivity.setVisible(true);
     }//GEN-LAST:event_btnEditActivityActionPerformed
 
     private void btnHistoryActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnHistoryActionPerformed
@@ -883,12 +928,86 @@ public class MainUi extends javax.swing.JFrame {
     }//GEN-LAST:event_btnSaveActionPerformed
 
     private void btnUpdateActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnUpdateActionPerformed
+        try {
+            // Validasi ID
+            if (currentEditingId == null || currentEditingId.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Invalid activity ID", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
 
+            // Validasi input
+            String nama = txtNameActivity1.getText().trim();
+            String deskripsi = txtDescription1.getText().trim();
+            Date tanggal = jDateChooser2.getDate();
+            String waktu = txtWorkingTime1.getText().trim();
+            String status = (String) selectStatusEdit.getSelectedItem();
+
+            if (nama.isEmpty() || deskripsi.isEmpty() || tanggal == null || waktu.isEmpty()) {
+                JOptionPane.showMessageDialog(this, bundle.getString("msg.add_required"));
+                return;
+            }
+
+            // Buat objek update
+            Aktivitas updatedAktivitas = new Aktivitas(nama, deskripsi, tanggal, waktu, status);
+            updatedAktivitas.setId(currentEditingId);
+
+            // Eksekusi update
+            boolean success = aktivitasHelper.update(currentEditingId, updatedAktivitas);
+
+            if (success) {
+                JOptionPane.showMessageDialog(this, bundle.getString("msg.edit_success"));
+                loadAktivitasTable();
+                formEditActivity.dispose();
+
+                currentEditingId = null;
+            } else {
+                JOptionPane.showMessageDialog(this, bundle.getString("msg.edit_failed"));
+            }
+        } catch (Exception e) {
+
+        }
     }//GEN-LAST:event_btnUpdateActionPerformed
 
     private void btnDeleteActivityActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnDeleteActivityActionPerformed
-        // TODO add your handling code here:
+        int selectedRow = tabActivity.getSelectedRow();
+        if (selectedRow == -1) {
+            JOptionPane.showMessageDialog(this, bundle.getString("msg.selectRow"));
+            return;
+        }
+
+        // Dapatkan daftar aktivitas
+        List<Aktivitas> list = aktivitasHelper.getByUser(loggedInUserId);
+
+        // Pastikan baris yang dipilih valid
+        if (selectedRow >= list.size()) {
+            JOptionPane.showMessageDialog(this, bundle.getString("msg.invalidSelection"));
+            return;
+        }
+
+        // Dapatkan aktivitas yang dipilih
+        Aktivitas selectedAktivitas = list.get(selectedRow);
+        String id = selectedAktivitas.getId();
+
+        int confirm = JOptionPane.showConfirmDialog(this,
+                bundle.getString("msg.confirm_delete"),
+                bundle.getString("msg.confirm_title"),
+                JOptionPane.YES_NO_OPTION);
+
+        if (confirm == JOptionPane.YES_OPTION) {
+            try {
+                aktivitasHelper.delete(id);
+                JOptionPane.showMessageDialog(this, bundle.getString("msg.delete_success"));
+                loadAktivitasTable();
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(this, bundle.getString("msg.delete_failed") + e.getMessage());
+                e.printStackTrace();
+            }
+        }
     }//GEN-LAST:event_btnDeleteActivityActionPerformed
+
+    private void btnCancelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCancelActionPerformed
+        loadAktivitasTable();
+    }//GEN-LAST:event_btnCancelActionPerformed
 
     /**
      * @param args the command line arguments

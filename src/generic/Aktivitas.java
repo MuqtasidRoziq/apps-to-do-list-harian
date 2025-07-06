@@ -15,6 +15,7 @@ public class Aktivitas implements Serializable {
     private Date tanggal;
     private String waktu;
     private String status;
+    private String id;
 
     public Aktivitas(String nama, String deskripsi, Date tanggal, String waktu, String status) {
         this.nama = nama;
@@ -44,6 +45,10 @@ public class Aktivitas implements Serializable {
         return status;
     }
 
+    public String getId() {
+        return id;
+    }
+
     public void setNama(String nama) {
         this.nama = nama;
     }
@@ -64,25 +69,40 @@ public class Aktivitas implements Serializable {
         this.status = status;
     }
 
+    public void setId(String id) {
+        this.id = id;
+    }
+
     public Object[] toRow(int no) {
         return new Object[]{no, nama, deskripsi, tanggal, waktu, status};
     }
 
     public Document toDocument() {
-        return new Document("nama", nama)
+        Document doc = new Document("nama", nama)
                 .append("deskripsi", deskripsi)
                 .append("tanggal", tanggal)
                 .append("waktu", waktu)
                 .append("status", status)
                 .append("userId", loginSession.getUserId());
+
+        if (id != null) {
+            doc.append("_id", new org.bson.types.ObjectId(id));
+        }
+        return doc;
     }
 
     public static Aktivitas fromDocument(Document doc) {
-        return new Aktivitas(
+        Aktivitas aktivitas = new Aktivitas(
                 doc.getString("nama"),
                 doc.getString("deskripsi"),
                 doc.getDate("tanggal"),
                 doc.getString("waktu"),
                 doc.getString("status"));
+
+        // Tambahkan ini untuk mengisi ID dari dokumen
+        if (doc.getObjectId("_id") != null) {
+            aktivitas.setId(doc.getObjectId("_id").toString());
+        }
+        return aktivitas;
     }
 }

@@ -8,7 +8,7 @@ import java.io.*;
 public class serialization {
     public static void serializeToFile(Object obj, String filename) throws IOException {
         try (ObjectOutputStream oos = new ObjectOutputStream(
-             new FileOutputStream(filename))) {
+            new FileOutputStream(filename))) {
             oos.writeObject(obj);
         }
     }
